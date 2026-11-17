@@ -27,10 +27,10 @@ once (it needs sudo).
 - Files are `tests/**/*.test.ts`, one per area, in the default language. Import
   `test` and `expect` from `./fixtures`, not from Playwright.
 - Every test has an account of its own (`account`), from the e2e API, and the
-  page opens signed in as it. `test.use({ signedIn: false })` for a guest. What
-  an account starts with (the product's own data) is set up in
-  `apps/api/tests/e2e/server.ts`, with fixed figures, so a test asserts the
-  exact value the user reads.
+  page opens signed in as it. `test.use({ signedIn: false })` for a guest,
+  `test.use({ admin: true })` for an administrator. What an account starts with
+  (the product's own data) is set up in `apps/api/tests/e2e/server.ts`, with
+  fixed figures, so a test asserts the exact value the user reads.
 - Find elements as a user does: by role and visible name (`getByRole`,
   `getByLabel`), scoped to the list item or section they're in. No CSS classes,
   no test ids.
@@ -45,5 +45,8 @@ once (it needs sudo).
 - Nothing reaches the network: the fixture aborts any request that isn't to
   localhost, and the e2e API fakes every outside service. A new outside service
   gets its fake there as well as in the integration tests.
+- A link a user would get by email (the confirmation, the password reset):
+  `emailLink(request, 'welcome' | 'reset', email)`, from `./fixtures`, reads it
+  from the e2e API's fake sender; the test then opens it.
 - Each test comes from an address of its own, so a failed login in one doesn't
   count against another.

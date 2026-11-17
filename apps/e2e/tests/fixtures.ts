@@ -1,4 +1,9 @@
-import { test as base, expect, type Page } from '@playwright/test'
+import {
+  test as base,
+  expect,
+  type APIRequestContext,
+  type Page,
+} from '@playwright/test'
 import { STORAGE_PREFIX, authResponseSchema } from '@app/shared'
 import { API_URL } from '../playwright.config'
 
@@ -7,9 +12,15 @@ interface Account {
   password: string
 }
 
-// `account`: a new verified user, for this test alone.
-// `page` opens signed in as them, unless the test sets `signedIn: false`.
-export const test = base.extend<{ account: Account; signedIn: boolean }>({
+// `account`: a new verified user, for this test alone, an administrator if the
+// test sets `admin: true`. `page` opens signed in as them, unless the test sets
+// `signedIn: false`.
+export const test = base.extend<{
+  account: Account
+  admin: boolean
+  signedIn: boolean
+}>({
+  admin: [false, { option: true }],
   signedIn: [true, { option: true }],
   // Every test comes from an address of its own, as different users would,
   // so the API's limits per address (failed logins, sign-ups) don't add up
@@ -21,8 +32,10 @@ export const test = base.extend<{ account: Account; signedIn: boolean }>({
     const byte = () => Math.floor(Math.random() * 256)
     await use({ 'X-Forwarded-For': `10.${byte()}.${byte()}.${byte()}` })
   },
-  account: async ({ request }, use) => {
-    const response = await request.post(`${API_URL}/e2e/accounts`)
+  account: async ({ request, admin }, use) => {
+    const response = await request.post(`${API_URL}/e2e/accounts`, {
+      data: { admin },
+    })
     expect(response.ok()).toBe(true)
     await use((await response.json()).data)
   },
@@ -41,8 +54,13 @@ export const test = base.extend<{ account: Account; signedIn: boolean }>({
       (await response.json()).data,
     )
     // As the login form leaves it (see apps/web/src/services/session.ts).
+    // Once per tab: the script runs on every page load, and setting it again
+    // would undo what the test does to the session (logging out, deleting
+    // the account, changing the language).
     await page.addInitScript(
       ({ prefix, token, user }) => {
+        if (sessionStorage.getItem('e2e.signedIn')) return
+        sessionStorage.setItem('e2e.signedIn', 'yes')
         localStorage.setItem(`${prefix}.token`, token)
         localStorage.setItem(`${prefix}.user`, JSON.stringify(user))
       },
@@ -83,4 +101,18 @@ export async function googleAs(page: Page, email: string): Promise<void> {
       `,
     }),
   )
+}
+
+// The link in the last email of that kind sent to `to`: the confirmation in
+// the welcome email, or the password reset.
+export async function emailLink(
+  request: APIRequestContext,
+  kind: 'welcome' | 'reset',
+  to: string,
+): Promise<string> {
+  const response = await request.get(`${API_URL}/e2e/emails/${kind}`, {
+    params: { to },
+  })
+  expect(response.ok()).toBe(true)
+  return (await response.json()).data
 }

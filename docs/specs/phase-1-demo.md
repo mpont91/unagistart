@@ -84,6 +84,12 @@ fixed, so this spec stays the full record of what the phase did.
       `PUBLIC_API_URL` failed with "Cannot read properties of undefined (reading
       'replace')"; the web now declares its variables with `astro:env`, and the
       API validates `DATABASE_URL` with the rest of its settings.
+- [x] Every journey a user takes has its end-to-end test, as the rules ask. The
+      suite only covered the landing, the first screen and Google sign-in; it
+      now also signs up with an email and confirms it, logs in and out, resets a
+      forgotten password, changes the password and the language, deletes the
+      account, and, as an admin, finds and deletes an account and reads the
+      metrics.
 
 ## Out of scope
 

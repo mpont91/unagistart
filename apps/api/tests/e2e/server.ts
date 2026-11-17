@@ -4,7 +4,9 @@
 // Sentry, so a run never touches the network.
 //
 // Each test that needs a user asks it for an account of its own
-// (POST /e2e/accounts), so tests don't share state and can run side by side.
+// (POST /e2e/accounts, `{ admin: true }` for an administrator), so tests don't
+// share state and can run side by side. The links the emails would carry are
+// read back from GET /e2e/emails/<welcome|reset>?to=<email>.
 // What a product's tests start from (its own data, more fakes) is added here.
 //
 //   make api/e2e-server   started by Playwright, not by hand
@@ -24,7 +26,8 @@ const errors: ErrorReporter = {
   report: (error, where) => console.error(`[${where}]`, error),
 }
 
-Container.getEmailSender = () => new FakeEmailSender()
+const emails = new FakeEmailSender()
+Container.getEmailSender = () => emails
 // Google's sign-in, as the stand-in for its script hands it over in the browser
 // (apps/e2e/tests/fixtures.ts, `googleAs`): a credential "fake-google:<email>"
 // is that address's Google account, with its email verified.
@@ -40,13 +43,16 @@ Container.getErrorReporter = () => errors
 const PASSWORD = 'e2e-password'
 
 // A verified account, ready to sign in.
-async function createAccount(): Promise<{ email: string; password: string }> {
+async function createAccount(
+  admin: boolean,
+): Promise<{ email: string; password: string }> {
   const email = `e2e-${randomUUID()}@example.com`
   await prisma.user.create({
     data: {
       email,
       hash: await Container.getPasswordHasher().hash(PASSWORD),
       emailVerifiedAt: new Date(),
+      role: admin ? 'ADMIN' : 'USER',
     },
   })
   return { email, password: PASSWORD }
@@ -70,8 +76,16 @@ const app = express()
 app.set('trust proxy', 1)
 app.use(cors({ origin: settings.corsOrigins }))
 app.use(express.json())
-app.post('/e2e/accounts', async (_: Request, res: Response) => {
-  res.status(201).send({ data: await createAccount() })
+app.post('/e2e/accounts', async (req: Request, res: Response) => {
+  res.status(201).send({ data: await createAccount(req.body?.admin === true) })
+})
+// The link in the last email of that kind sent to `to`, as the user would
+// click it.
+app.get('/e2e/emails/:kind', (req: Request, res: Response) => {
+  const sent = req.params.kind === 'reset' ? emails.resets : emails.welcomes
+  const last = sent.filter(({ email }) => email === req.query.to).at(-1)
+  if (!last) return void res.status(404).send({ error: 'No such email' })
+  res.send({ data: last.url })
 })
 app.use('/', createRouter())
 app.use(errorHandler(errors))
