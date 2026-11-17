@@ -243,7 +243,7 @@ exactly one proxy hop so rate limits count visitors, not the proxy.
 **The reverse proxy is Caddy, installed on the host.** It gets and renews the
 certificates by itself, and the whole config for an API is three lines. On the
 host rather than in each project's Compose, so one Caddy serves every project on
-a shared VPS, each on its own port. The steps are in the README, "5. Deploy".
+a shared VPS, each on its own port. The steps are in the README, "Deploy".
 
 **Domains are bought at DonDominio; their DNS is on Vercel.** DonDominio stays
 the registrar and the domain points its nameservers at Vercel, which applies a

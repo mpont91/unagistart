@@ -24,8 +24,8 @@ address, log in, change their language or their password, and delete the account
 when they're done: the flows every project inherits, working for real.
 
 **3. Start a project.** On GitHub, **Use this template**, then the README's
-"Starting a project" turns it into theirs: a name, a vision, a palette, and the
-accounts a product needs.
+"Starting a project" turns it into theirs: a name, a vision and a palette; then
+its "Services" and "Deploy" put it in production.
 
 **4. Keep it alive.** When a project improves the generic part (a fix in the
 auth flow, a better deploy step, a new convention), the improvement comes back

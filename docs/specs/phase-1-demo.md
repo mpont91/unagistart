@@ -50,8 +50,8 @@ The demo stores real people's emails, so its policies have to be real.
 
 ## 1.5 Running in production
 
-These need the owner's accounts; the README's "Accounts the product needs" and
-"The server" list the steps.
+These need the owner's accounts; the README's "Services" and "Deploy" list the
+steps.
 
 - [ ] `unagistart.mpont91.com` serves the web from Vercel, and
       `api.unagistart.mpont91.com` the API from the VPS, behind the reverse
@@ -62,8 +62,8 @@ These need the owner's accounts; the README's "Accounts the product needs" and
 - [ ] Errors in the API and the web reach their Sentry projects.
 - [ ] The nightly backup reaches B2, and one restore drill has been done.
 - [ ] UptimeRobot watches the web and the API's `/uptime`.
-- [ ] The reverse proxy in use, and how it's configured, is recorded in the
-      README's "The server", replacing the note that it's still to be recorded.
+- [x] The reverse proxy in use, and how it's configured, is recorded in the
+      README's "Deploy", replacing the note that it's still to be recorded.
 - [ ] The README lists the services the demo uses, each with its console, what
       it's for and where its key goes.
 

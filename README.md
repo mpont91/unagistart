@@ -28,8 +28,8 @@ from are in `docs/templates/`.
 | Email      | Resend behind a port, one branded layout, every message in English and Spanish.                                       |
 | Web        | Astro (static) + Vue 3 islands + Tailwind 4, design tokens, dark-first, UI primitives, English and Spanish routes.    |
 | Monitoring | Sentry in the API and the web (nothing personal reported), heap watchdog, crash detection, Vercel Analytics.          |
-| Tests      | `node:test` everywhere; API integration tests against a real Postgres, external services faked.                       |
-| Deploy     | Docker Compose on a VPS (`make deploy`), migrations from a throwaway container; the web on Vercel.                    |
+| Tests      | Unit tests, API integration tests against a real Postgres, Playwright end-to-end tests of every journey.              |
+| Deploy     | Docker Compose on a VPS behind Caddy (`make deploy`), migrations from a throwaway container; the web on Vercel.       |
 | Backups    | Nightly `pg_dump`, encrypted with `age`, to Backblaze B2; a failure raises a Sentry issue; `make api/restore`.        |
 | Docs       | `VISION`, `ROADMAP` and phase spec templates, the decision log, and a `CLAUDE.md` per app.                            |
 
@@ -49,142 +49,159 @@ The new repository starts from a single commit, without this one's history.
 
 ### 2. Make it yours
 
-- [ ] `packages/shared/src/brand.ts`: `APP_NAME`, `APP_DOMAIN`, `APP_SLUG`.
-- [ ] The product's description at the top of the three `CLAUDE.md` files (they
-      describe Unagi Start), and its security rules in the root one.
-- [ ] `docs/VISION.md`, then `docs/ROADMAP.md` and the first spec, from the
-      blank ones in `docs/templates/` (the ones in `docs/` are Unagi Start's):
-      delete `docs/specs/` and copy the skeletons over. Write them before any
-      code: they're what Claude checks every decision against.
-- [ ] The palette in `apps/web/src/styles/global.css` (and the same colours in
-      `apps/api/src/infrastructure/email/email-layout.ts`).
-- [ ] The logo: `apps/web/src/assets/logo.svg`, `apps/web/public/favicon.svg`,
-      and `apps/web/public/apple-touch-icon.png` (180×180, used by the emails).
-- [ ] The landing copy (`home.*` in `apps/web/src/i18n/en.ts` and `es.ts`) and
-      `AppHome.vue`, the first screen after logging in.
-- [ ] `apps/web/src/constants.ts`: `CONTACT_EMAIL`, the address the contact page
-      shows, and `REPOSITORY_URL`, the code the landing links to (empty it if
-      the code isn't public).
-- [ ] The legal pages in `apps/web/src/legal/`, filled in for Unagi Start: the
-      product's name, the controller, the contact and what the product stores,
-      as the comment at the top of each says. Have them reviewed before real
-      users arrive.
-- [ ] Remove from this README what's about the template, and describe the
-      product instead.
+- [ ] **Name:** `packages/shared/src/brand.ts`, and `COMPOSE_PROJECT_NAME` in
+      `apps/api/.env.example`.
+- [ ] **Docs:** `docs/VISION.md`, `ROADMAP.md` and the first spec, from the
+      blanks in `docs/templates/` (they replace Unagi Start's). Before any code:
+      Claude checks every decision against them.
+- [ ] **Rules:** the description at the top of the three `CLAUDE.md` files, and
+      the security rules in the root one.
+- [ ] **Palette:** `apps/web/src/styles/global.css`, and the same colours in the
+      API's `email-layout.ts`.
+- [ ] **Logo:** `apps/web/src/assets/logo.svg`, and in `apps/web/public/`
+      `favicon.svg` and `apple-touch-icon.png` (180×180, used by the emails).
+- [ ] **Copy:** the landing and the first screen (`home.*` in
+      `apps/web/src/i18n/`, `AppHome.vue`), and their test,
+      `apps/e2e/tests/home.test.ts`.
+- [ ] **Links:** `CONTACT_EMAIL` and `REPOSITORY_URL` in
+      `apps/web/src/constants.ts` (empty hides them).
+- [ ] **Legal pages:** `apps/web/src/legal/`, as the comment at the top of each
+      says. Reviewed before real users arrive.
+- [ ] **This README:** rewrite the top, and remove "Starting a project" and
+      "Keeping the template alive". The rest stays: it's the project's too.
 
-### 3. Run it locally
+## Development
 
-Needs Node 26 (`nvm use`), Docker and `make`.
+Requirements:
+
+- **Node 26**, the version in `.nvmrc` (`nvm use`).
+- **Docker** with Compose: the database runs in it.
+- **`make`**: every command goes through it.
 
 ```bash
-cp apps/api/.env.example apps/api/.env   # set COMPOSE_PROJECT_NAME, JWT_SECRET
+cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 make install
 make dev        # API on :3000 with its database, web on :4321
 make check      # the gate: format, lint, typecheck, tests
 ```
 
-`JWT_SECRET` is `openssl rand -hex 32`. `RESEND_API_KEY` and `GOOGLE_CLIENT_ID`
-must be set for the API to boot; any value works locally until the real ones
-exist (sign-up then reports the unsent email instead of sending it). To log in
-before email works, confirm the account by hand:
+The API doesn't boot without three values in `apps/api/.env`:
+
+- `JWT_SECRET`: a random string, `openssl rand -hex 32`.
+- `RESEND_API_KEY`: from Resend (see "Services").
+- `GOOGLE_CLIENT_ID`: from Google Cloud (see "Services"), also in
+  `apps/web/src/constants.ts`.
+
+Any value works for the last two until the real ones exist; the confirmation
+email isn't sent then, so to log in with an account made by email, mark it
+confirmed by hand:
 
 ```bash
 (cd apps/api && docker compose exec db psql -U app -d app \
   -c "UPDATE \"User\" SET \"emailVerifiedAt\" = now() WHERE email = 'you@…'")
-make api/grant-admin EMAIL=you@…   # optional: open the admin panel
 ```
 
-If another project already uses a port, change it in that app's `.env` (see
-"Ports and local config" in `CLAUDE.md`).
+`make api/grant-admin EMAIL=…` opens the admin panel to an account. If another
+project already uses a port, change it in that app's `.env`.
 
-### 4. Accounts the product needs
+## Services
 
-Each one is free at a small product's scale. They can come in any order. Each
-name links to its console; the providers named are the ones the owner's projects
-use, so one account serves them all.
+The providers the owner's projects use, each free at a small product's scale.
+Any other works: email, Google sign-in and error reporting sit behind a port in
+the API. Each name links to its console.
 
-- [ ] **Domain,** bought on [DonDominio](https://www.dondominio.com/), its
-      nameservers pointed at [Vercel](https://vercel.com/dashboard/domains),
-      which holds the DNS (see "Hosting and deploy" in `docs/ARCHITECTURE.md`).
-- [ ] **A VPS** on [Clouding.io](https://portal.clouding.io/) (see "5. Deploy",
-      below).
-- [ ] **[Resend](https://resend.com/emails):** verify the domain, create an API
-      key → `RESEND_API_KEY`.
-- [ ] **[Google Cloud](https://console.cloud.google.com/apis/credentials):** an
-      OAuth client of type "Web application", with the production origin and
-      `http://localhost:4321` as authorised JavaScript origins →
-      `GOOGLE_CLIENT_ID` in `apps/api/.env` and in `apps/web/src/constants.ts`.
-- [ ] **[Sentry](https://sentry.io/)** (EU region): one project for the API →
+- [ ] **Domain** on [DonDominio](https://www.dondominio.com/), its nameservers
+      pointed at [Vercel](https://vercel.com/dashboard/domains), which holds the
+      DNS.
+- [ ] **VPS** on [Clouding.io](https://portal.clouding.io/), set up in "Deploy".
+- [ ] **[Vercel](https://vercel.com/dashboard):** hosts the web and the DNS.
+- [ ] **[Resend](https://resend.com/emails):** the domain verified, an API key →
+      `RESEND_API_KEY`.
+- [ ] **[Google Cloud](https://console.cloud.google.com/apis/credentials):** a
+      "Web application" OAuth client, with the production origin and
+      `http://localhost:4321` → `GOOGLE_CLIENT_ID`.
+- [ ] **[Sentry](https://sentry.io/)** (EU): a project for the API →
       `SENTRY_DSN`, one for the web → `PUBLIC_SENTRY_DSN`.
-- [ ] **[Backblaze B2](https://secure.backblaze.com/b2_buckets.htm)** (EU
-      region): a private bucket, an application key with _Read and Write_ access
-      restricted to it → `BACKUP_B2_KEY_ID`, `BACKUP_B2_APPLICATION_KEY`.
-      Lifecycle rules in the B2 console: `daily/` hides files after 7 days,
-      `weekly/` after 28, both delete a day after hiding.
-- [ ] **An age key pair** for the backups: `age-keygen`. The public key
-      (`age1…`) → `BACKUP_AGE_RECIPIENT`; the private key goes only into the
-      password manager, [Bitwarden](https://vault.bitwarden.com/), never onto
-      the server.
-- [ ] **[Vercel](https://vercel.com/dashboard):** an account; it hosts the web
-      and the DNS (see "5. Deploy").
-- [ ] **[UptimeRobot](https://dashboard.uptimerobot.com/)**, a monitor on the
-      web and on the API's `/uptime`.
+- [ ] **[Backblaze B2](https://secure.backblaze.com/b2_buckets.htm)** (EU): a
+      private bucket and a _Read and Write_ key restricted to it →
+      `BACKUP_B2_KEY_ID`, `BACKUP_B2_APPLICATION_KEY`. Lifecycle: `daily/`
+      hidden after 7 days, `weekly/` after 28, deleted a day later.
+- [ ] **Backup key:** `age-keygen`. The public key → `BACKUP_AGE_RECIPIENT`; the
+      private one only in [Bitwarden](https://vault.bitwarden.com/).
+- [ ] **[UptimeRobot](https://dashboard.uptimerobot.com/):** monitors on the web
+      and on the API's `/uptime`.
 
-Then list them all in the project's README, under "Services it uses": a table
-with each service (linked to its console), what it's for and where its key goes,
-so nobody has to remember where anything lives.
+A project then replaces this list with a table of the ones it uses: each one's
+console, what it's for and where its key goes.
 
-### 5. Deploy
+## Deploy
 
-The first deploy, from zero, once the accounts above exist. `<domain>` is the
-product's domain, `<ip>` the server's address and `<name>` the repository's
-name.
+The first deploy, from zero, once the services above are set up. Written with
+this project's values: the web at `unagistart.mpont91.com`, the API at
+`api.unagistart.mpont91.com`, the repository `mpont91/unagistart`; a project
+changes them for its own. `<ip>` is the server's address, used only for the DNS:
+everything else reaches the server by its name.
 
 **The server** needs Docker (with Compose), git, `make` and Caddy, the reverse
 proxy, and nothing else: everything the project runs there runs in a container.
 
 1. **Create the VPS** on Clouding: Ubuntu, latest LTS, with your SSH public key.
    In its firewall, open only ports 22, 80 and 443.
-2. **Point the API's name at it.** In Vercel's DNS for `<domain>`, an `A` record
-   `api` → `<ip>` (or `vercel dns add <domain> api A <ip>`). Wait until
-   `dig +short api.<domain>` prints `<ip>`: Caddy can't get a certificate
-   before.
-3. **Install what it needs.** On the server, as root:
+2. **Point the API's name at it.** In Vercel's DNS for `mpont91.com`, an `A`
+   record `api.unagistart` → `<ip>`
+   (`vercel dns add mpont91.com api.unagistart A <ip>`). Wait until
+   `dig +short api.unagistart.mpont91.com` prints `<ip>`: Caddy can't get a
+   certificate before.
+3. **Tell your machine where it is.** In your local `apps/api/.env`:
 
    ```bash
-   ssh root@<ip>
+   SERVER_SSH=root@api.unagistart.mpont91.com
+   SERVER_PATH=/root/unagistart
+   ```
+
+   From then on, `make api/ssh` opens a shell on the server.
+
+4. **Install what it needs**, on the server (`make api/ssh`):
+
+   ```bash
    apt update && apt upgrade -y
    apt install -y make caddy
    curl -fsSL https://get.docker.com | sh
-   sshd -T | grep passwordauthentication   # must print "no"
    ```
 
    The API and the database publish their ports on `127.0.0.1` only, so the
    firewall's three ports are all the outside reaches.
 
-4. **Clone the repository** at the path that will be `SERVER_PATH`:
+5. **Give it a deploy key.** Each server reads the repository with a key of its
+   own, read-only, so a lost server is one key to revoke:
 
    ```bash
-   git clone https://github.com/<owner>/<name>.git /srv/<name>
+   ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+   cat ~/.ssh/id_ed25519.pub
    ```
 
-   A private repository needs a deploy key instead: `ssh-keygen -t ed25519` on
-   the server, the public key added read-only under the repository's _Settings →
-   Deploy keys_, and the clone made with `git@github.com:…`.
+   Add what it prints in
+   [the repository's deploy keys](https://github.com/mpont91/unagistart/settings/keys),
+   without write access.
 
-5. **Write `apps/api/.env`** from the example:
+6. **Clone the repository**, in root's home (the first time, `yes` to GitHub's
+   fingerprint):
 
    ```bash
-   cd /srv/<name>/apps/api
+   git clone git@github.com:mpont91/unagistart.git
+   ```
+
+7. **Write `apps/api/.env`** from the example:
+
+   ```bash
+   cd unagistart/apps/api
    cp .env.example .env && chmod 600 .env
    ```
 
    and change, from the development values:
    - `NODE_ENV=production`.
-   - `COMPOSE_PROJECT_NAME`: the product's slug. Never changed afterwards: it
-     names the database volume.
-   - `CORS_ORIGINS` and `FRONTEND_URL`: `https://<domain>`.
+   - `CORS_ORIGINS` and `FRONTEND_URL`: `https://unagistart.mpont91.com`.
    - `POSTGRES_PASSWORD`: a new one (`openssl rand -hex 32`), and the same in
      `DATABASE_URL`.
    - `JWT_SECRET`: a new one (`openssl rand -hex 32`), never the development
@@ -195,12 +212,15 @@ proxy, and nothing else: everything the project runs there runs in a container.
      same VPS already uses them.
    - `SERVER_SSH` and `SERVER_PATH`: empty; they're for your machine.
 
-6. **Put Caddy in front of the API.** It gets and renews the certificate by
+   `COMPOSE_PROJECT_NAME` stays `unagistart`, and never changes afterwards: it
+   names the database volume.
+
+8. **Put Caddy in front of the API.** It gets and renews the certificate by
    itself:
 
    ```bash
    cat > /etc/caddy/Caddyfile <<'CADDY'
-   api.<domain> {
+   api.unagistart.mpont91.com {
    	reverse_proxy 127.0.0.1:3000
    }
    CADDY
@@ -213,36 +233,34 @@ proxy, and nothing else: everything the project runs there runs in a container.
 
 **The first deploy**, from your machine:
 
-7. In your local `apps/api/.env`, `SERVER_SSH=root@<ip>` and
-   `SERVER_PATH=/srv/<name>`. Then:
+9. Deploy, and check the API answers:
 
    ```bash
-   make deploy                          # pull, migrate, build and start
-   curl https://api.<domain>/uptime     # {"data":…}
+   make deploy    # pull, migrate, build and start
+   curl https://api.unagistart.mpont91.com/uptime    # {"data":…}
    ```
 
-8. **Check the backups**, on the server:
+10. **Check the backups**, on the server (`make api/ssh`):
 
-   ```bash
-   make api/ssh
-   make api/backup    # prints "backup: uploaded daily/…", now in the bucket
-   ```
+    ```bash
+    make api/backup    # prints "backup: uploaded daily/…", now in the bucket
+    ```
 
 **The web:**
 
-9. In Vercel, **import the repository** with `apps/web` as root directory, set
-   `PUBLIC_API_URL=https://api.<domain>` and `PUBLIC_SENTRY_DSN`, deploy, and
-   add `<domain>` under the project's _Domains_.
+11. In Vercel, **import the repository** with `apps/web` as root directory, set
+    `PUBLIC_API_URL=https://api.unagistart.mpont91.com` and `PUBLIC_SENTRY_DSN`,
+    deploy, and add `unagistart.mpont91.com` under the project's _Domains_.
 
 **Check it end to end:**
 
-10. On `https://<domain>`, sign up with email, confirm the address from the
-    email, log in, and sign in with Google.
-11. Make yourself admin, on the server (`make api/ssh`):
+12. On `https://unagistart.mpont91.com`, sign up with email, confirm the address
+    from the email, log in, and sign in with Google.
+13. Make yourself admin, on the server (`make api/ssh`):
     `make api/grant-admin EMAIL=you@…`.
-12. UptimeRobot: a monitor on `https://<domain>` and one on
-    `https://api.<domain>/uptime`.
-13. A restore drill, on your machine: `make api/restore`, then compare its
+14. UptimeRobot: a monitor on `https://unagistart.mpont91.com` and one on
+    `https://api.unagistart.mpont91.com/uptime`.
+15. A restore drill, on your machine: `make api/restore`, then compare its
     counts with the admin panel's.
 
 Every later deploy is `make deploy` for the API and a push for the web. Deploy
