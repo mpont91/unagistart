@@ -107,7 +107,7 @@ use, so one account serves them all.
 - [ ] **Domain,** bought on [IONOS](https://my.ionos.es/), its nameservers
       pointed at [Vercel](https://vercel.com/dashboard/domains), which holds the
       DNS (see "Hosting and deploy" in `docs/ARCHITECTURE.md`).
-- [ ] **A VPS** on [Clouding.io](https://portal.clouding.io/) (see "The server",
+- [ ] **A VPS** on [Clouding.io](https://portal.clouding.io/) (see "5. Deploy",
       below).
 - [ ] **[Resend](https://resend.com/emails):** verify the domain, create an API
       key → `RESEND_API_KEY`.
@@ -126,9 +126,8 @@ use, so one account serves them all.
       (`age1…`) → `BACKUP_AGE_RECIPIENT`; the private key goes only into the
       password manager, [Bitwarden](https://vault.bitwarden.com/), never onto
       the server.
-- [ ] **[Vercel](https://vercel.com/dashboard):** import the repository with
-      `apps/web` as root directory; set `PUBLIC_API_URL` and
-      `PUBLIC_SENTRY_DSN`.
+- [ ] **[Vercel](https://vercel.com/dashboard):** an account; it hosts the web
+      and the DNS (see "5. Deploy").
 - [ ] **[UptimeRobot](https://dashboard.uptimerobot.com/)**, a monitor on the
       web and on the API's `/uptime`.
 
@@ -136,27 +135,115 @@ Then list them all in the project's README, under "Services it uses": a table
 with each service (linked to its console), what it's for and where its key goes,
 so nobody has to remember where anything lives.
 
-### 5. The server
+### 5. Deploy
 
-A clean VPS needs Docker (with Compose), git and `make`, the repository cloned
-at `SERVER_PATH`, and `apps/api/.env` with the production values,
-`NODE_ENV=production`, `COMPOSE_PROFILES=backup` and the `BACKUP_*` keys. In
-front of the API, a reverse proxy with TLS for `api.<domain>` forwarding to
-`127.0.0.1:$PORT` (exactly one hop: the rate limits rely on it). The web is at
-`<domain>`, so the API's `CORS_ORIGINS` and `FRONTEND_URL` are
-`https://<domain>`.
+The first deploy, from zero, once the accounts above exist. `<domain>` is the
+product's domain, `<ip>` the server's address and `<name>` the repository's
+name.
 
-> [The reverse proxy in use and how it's configured is still to be recorded
-> here.]
+**The server** needs Docker (with Compose), git, `make` and Caddy, the reverse
+proxy, and nothing else: everything the project runs there runs in a container.
 
-Then, from your machine, with `SERVER_SSH` and `SERVER_PATH` in your local
-`apps/api/.env`:
+1. **Create the VPS** on Clouding: Ubuntu, latest LTS, with your SSH public key.
+   In its firewall, open only ports 22, 80 and 443.
+2. **Point the API's name at it.** In Vercel's DNS for `<domain>`, an `A` record
+   `api` → `<ip>` (or `vercel dns add <domain> api A <ip>`). Wait until
+   `dig +short api.<domain>` prints `<ip>`: Caddy can't get a certificate
+   before.
+3. **Install what it needs.** On the server, as root:
 
-```bash
-make deploy     # pull, migrate, build and restart on the server
-make api/backup # one backup now, to see it reach the bucket
-make api/restore # a drill: restore the latest into <db>_restore locally
-```
+   ```bash
+   ssh root@<ip>
+   apt update && apt upgrade -y
+   apt install -y make caddy
+   curl -fsSL https://get.docker.com | sh
+   sshd -T | grep passwordauthentication   # must print "no"
+   ```
+
+   The API and the database publish their ports on `127.0.0.1` only, so the
+   firewall's three ports are all the outside reaches.
+
+4. **Clone the repository** at the path that will be `SERVER_PATH`:
+
+   ```bash
+   git clone https://github.com/<owner>/<name>.git /srv/<name>
+   ```
+
+   A private repository needs a deploy key instead: `ssh-keygen -t ed25519` on
+   the server, the public key added read-only under the repository's _Settings →
+   Deploy keys_, and the clone made with `git@github.com:…`.
+
+5. **Write `apps/api/.env`** from the example:
+
+   ```bash
+   cd /srv/<name>/apps/api
+   cp .env.example .env && chmod 600 .env
+   ```
+
+   and change, from the development values:
+   - `NODE_ENV=production`.
+   - `COMPOSE_PROJECT_NAME`: the product's slug. Never changed afterwards: it
+     names the database volume.
+   - `CORS_ORIGINS` and `FRONTEND_URL`: `https://<domain>`.
+   - `POSTGRES_PASSWORD`: a new one (`openssl rand -hex 32`), and the same in
+     `DATABASE_URL`.
+   - `JWT_SECRET`: a new one (`openssl rand -hex 32`), never the development
+     one.
+   - `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `SENTRY_DSN`: the real ones.
+   - `COMPOSE_PROFILES=backup` and the three `BACKUP_*` keys.
+   - `PORT` and `POSTGRES_PORT`: the defaults, unless another project on the
+     same VPS already uses them.
+   - `SERVER_SSH` and `SERVER_PATH`: empty; they're for your machine.
+
+6. **Put Caddy in front of the API.** It gets and renews the certificate by
+   itself:
+
+   ```bash
+   cat > /etc/caddy/Caddyfile <<'CADDY'
+   api.<domain> {
+   	reverse_proxy 127.0.0.1:3000
+   }
+   CADDY
+   systemctl reload caddy
+   ```
+
+   The port is the `PORT` in `.env`. A VPS shared by several projects keeps one
+   Caddyfile with a block per project. Nothing else may sit in front: the API
+   trusts exactly one proxy hop, and its rate limits rely on it.
+
+**The first deploy**, from your machine:
+
+7. In your local `apps/api/.env`, `SERVER_SSH=root@<ip>` and
+   `SERVER_PATH=/srv/<name>`. Then:
+
+   ```bash
+   make deploy                          # pull, migrate, build and start
+   curl https://api.<domain>/uptime     # {"data":…}
+   ```
+
+8. **Check the backups**, on the server:
+
+   ```bash
+   make api/ssh
+   make api/backup    # prints "backup: uploaded daily/…", now in the bucket
+   ```
+
+**The web:**
+
+9. In Vercel, **import the repository** with `apps/web` as root directory, set
+   `PUBLIC_API_URL=https://api.<domain>` and `PUBLIC_SENTRY_DSN`, deploy, and
+   add `<domain>` under the project's _Domains_.
+
+**Check it end to end:**
+
+10. On `https://<domain>`, sign up with email, confirm the address from the
+    email, log in, and sign in with Google.
+11. Make yourself admin, on the server (`make api/ssh`):
+    `make api/grant-admin EMAIL=you@…`.
+12. UptimeRobot: a monitor on `https://<domain>` and one on
+    `https://api.<domain>/uptime`.
+13. A restore drill, on your machine: `make api/restore`, then compare its
+    counts with the admin panel's.
 
 Every later deploy is `make deploy` for the API and a push for the web. Deploy
 the API first when the contract changes (see `apps/web/CLAUDE.md`).

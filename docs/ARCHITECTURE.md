@@ -240,6 +240,11 @@ Vercel.** The cheapest setup that keeps the data on infrastructure the owner
 controls. The API listens on `127.0.0.1` behind a reverse proxy, and trusts
 exactly one proxy hop so rate limits count visitors, not the proxy.
 
+**The reverse proxy is Caddy, installed on the host.** It gets and renews the
+certificates by itself, and the whole config for an API is three lines. On the
+host rather than in each project's Compose, so one Caddy serves every project on
+a shared VPS, each on its own port. The steps are in the README, "5. Deploy".
+
 **Domains are bought at IONOS; their DNS is on Vercel.** IONOS stays the
 registrar and the domain points its nameservers at Vercel. IONOS's DNS editor is
 slow to use and slow to apply; Vercel applies a change in seconds, sets up the
