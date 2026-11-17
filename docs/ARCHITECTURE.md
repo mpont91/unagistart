@@ -245,19 +245,19 @@ certificates by itself, and the whole config for an API is three lines. On the
 host rather than in each project's Compose, so one Caddy serves every project on
 a shared VPS, each on its own port. The steps are in the README, "5. Deploy".
 
-**Domains are bought at IONOS; their DNS is on Vercel.** IONOS stays the
-registrar and the domain points its nameservers at Vercel. IONOS's DNS editor is
-slow to use and slow to apply; Vercel applies a change in seconds, sets up the
-web's records and certificates by itself, and its CLI lets a record be added
-without opening a console. The cost is that the DNS follows the web: a project
-that leaves Vercel moves its DNS too.
+**Domains are bought at DonDominio; their DNS is on Vercel.** DonDominio stays
+the registrar and the domain points its nameservers at Vercel, which applies a
+change in seconds, sets up the web's records and certificates by itself, and its
+CLI lets a record be added without opening a console. The cost is that the DNS
+follows the web: a project that leaves Vercel moves its DNS too.
 
 The zone of a project holds, besides what Vercel adds for the web: an `A` record
 for `api.<domain>` to the VPS, Resend's records (DKIM, and SPF and MX on its
 `send` subdomain), and whatever else the domain already served, such as a
 mailbox's MX. Moving an existing domain doesn't interrupt it if done in order:
-copy every record from IONOS into Vercel, turn DNSSEC off at IONOS if it's on,
-switch the nameservers, and check with `dig` that each name answers as before.
+copy every record from the registrar into Vercel, turn DNSSEC off at the
+registrar if it's on, switch the nameservers, and check with `dig` that each
+name answers as before.
 
 **Two images from one Dockerfile.** The runtime image has production
 dependencies only; the `builder` stage, with the Prisma CLI, is also the

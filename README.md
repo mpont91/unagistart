@@ -104,9 +104,9 @@ Each one is free at a small product's scale. They can come in any order. Each
 name links to its console; the providers named are the ones the owner's projects
 use, so one account serves them all.
 
-- [ ] **Domain,** bought on [IONOS](https://my.ionos.es/), its nameservers
-      pointed at [Vercel](https://vercel.com/dashboard/domains), which holds the
-      DNS (see "Hosting and deploy" in `docs/ARCHITECTURE.md`).
+- [ ] **Domain,** bought on [DonDominio](https://www.dondominio.com/), its
+      nameservers pointed at [Vercel](https://vercel.com/dashboard/domains),
+      which holds the DNS (see "Hosting and deploy" in `docs/ARCHITECTURE.md`).
 - [ ] **A VPS** on [Clouding.io](https://portal.clouding.io/) (see "5. Deploy",
       below).
 - [ ] **[Resend](https://resend.com/emails):** verify the domain, create an API
