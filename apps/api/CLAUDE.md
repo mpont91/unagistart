@@ -235,12 +235,12 @@ only this repo's projects are looked at or changed.
   (`TooManyAttempts`).
 - `POST /auth/google` takes the ID token from Google's button and logs in, links
   or registers (`GoogleSignInUseCase`). `GoogleAuthLibraryVerifier` checks it
-  against Google's keys and our client id (`settings.auth`, not an env var: it
-  isn't secret). It fetches Google's keys before verifying, outside its `catch`,
-  so Google being unreachable is a 500 and a bad token a 401. Only `email` and
-  `sub` (as `googleId`) are kept. An address Google hasn't verified is refused;
-  linking an account whose email was never confirmed removes its password (see
-  "Accounts and auth" in `ARCHITECTURE.md`).
+  against Google's keys and our client id (`GOOGLE_CLIENT_ID`). It fetches
+  Google's keys before verifying, outside its `catch`, so Google being
+  unreachable is a 500 and a bad token a 401. Only `email` and `sub` (as
+  `googleId`) are kept. An address Google hasn't verified is refused; linking an
+  account whose email was never confirmed removes its password (see "Accounts
+  and auth" in `ARCHITECTURE.md`).
 - An account can have no password (`hash` null): password login and password
   confirmations refuse it, the forgotten-password email sets one, and deleting
   it takes `{ googleCredential }`, which must belong to its `googleId`. `User`
@@ -381,11 +381,11 @@ Prisma 7 with the `@prisma/adapter-pg` driver adapter; config in
 
 `.env` is gitignored; `.env.example` lists the keys. Required: `DATABASE_URL`,
 `JWT_SECRET` (`openssl rand -hex 32`), `RESEND_API_KEY`, `GOOGLE_CLIENT_ID` (the
-OAuth client of the web's Google button, the same value as `GOOGLE_CLIENT_ID` in
-the web's `src/constants.ts`), `POSTGRES_*`, `PORT`, `CORS_ORIGINS`,
-`COMPOSE_PROJECT_NAME` and `FRONTEND_URL`, where the links in emails point (the
-web's origin; not the same thing as `CORS_ORIGINS`, which may list several).
-There is no sender variable: emails always go out from
+OAuth client of the web's Google button, the same value as
+`PUBLIC_GOOGLE_CLIENT_ID` in the web's `.env`), `POSTGRES_*`, `PORT`,
+`CORS_ORIGINS`, `COMPOSE_PROJECT_NAME` and `FRONTEND_URL`, where the links in
+emails point (the web's origin; not the same thing as `CORS_ORIGINS`, which may
+list several). There is no sender variable: emails always go out from
 `APP_NAME <noreply@APP_DOMAIN>`, the domain verified in Resend. `SENTRY_DSN` is
 optional: without it nothing is reported. Deployment also uses `SERVER_SSH` (the
 SSH destination, `user@host`) and `SERVER_PATH` (the repo on the server).
