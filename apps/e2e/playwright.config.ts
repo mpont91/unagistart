@@ -45,6 +45,7 @@ export default defineConfig({
       env: {
         PUBLIC_API_URL: `${API_URL}/`,
         PUBLIC_SENTRY_DSN: '',
+        PUBLIC_GOOGLE_CLIENT_ID: 'e2e',
       },
       reuseExistingServer: false,
       timeout: 120_000,

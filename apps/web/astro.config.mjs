@@ -36,6 +36,13 @@ export default defineConfig({
         url: true,
         optional: true,
       }),
+      // The OAuth client behind "Sign in with Google": the same value as
+      // GOOGLE_CLIENT_ID in the API's .env, which checks Google's tokens were
+      // issued to it. Not a secret: it's in every page that shows the button.
+      PUBLIC_GOOGLE_CLIENT_ID: envField.string({
+        context: 'client',
+        access: 'public',
+      }),
     },
   },
 

@@ -65,8 +65,9 @@ never hardcode a port.
 A `.env` may list the production URL and then the localhost one; the last
 assignment wins, so the trailing line is the active override.
 
-Two values that aren't secret live in `src/constants.ts` instead:
-`CONTACT_EMAIL` (empty switches the contact links off) and `GOOGLE_CLIENT_ID`.
+Two values that are the product's, the same everywhere it runs, live in
+`src/constants.ts` instead: `CONTACT_EMAIL` and `REPOSITORY_URL` (empty switches
+their links off).
 
 ## Architecture: static shell, interactive islands
 
@@ -85,7 +86,7 @@ src/legal/             privacy policy + terms, one Markdown file per language
 src/helpers/           pure formatting/derivation helpers (display only)
 src/composables/       useAsync (what a view loads), useSubmit (what it does)
 src/monitoring/        Sentry: init, the Vue error hook, what an event keeps
-src/constants.ts       contact email, Google's client id
+src/constants.ts       contact email, repository URL
 ```
 
 There is no `src/types/`: the API contract comes from `@app/shared`. See "The
@@ -312,7 +313,7 @@ prefix logs every user out once; that's acceptable on a rename.
 - Signing in with Google does: `GoogleButton.vue` loads Google Identity Services
   on demand and renders Google's own button, and the ID token it hands back goes
   untouched to `signInWithGoogle`, which logs in, links or registers. The client
-  id is `GOOGLE_CLIENT_ID` in `constants.ts` (not secret, so not an env var);
+  id is `PUBLIC_GOOGLE_CLIENT_ID`, the same as the API's `GOOGLE_CLIENT_ID`;
   `localhost:4321` is among its authorised origins. One button per page: the GIS
   callback is global.
 - An account without a password (`user.hasPassword === false`) sets one through

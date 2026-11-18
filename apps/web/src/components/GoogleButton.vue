@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { GOOGLE_CLIENT_ID } from '../constants'
+import { PUBLIC_GOOGLE_CLIENT_ID } from 'astro:env/client'
 import { useLanguage, useTranslations } from '../i18n/vue'
 import Skeleton from './ui/Skeleton.vue'
 
@@ -27,7 +27,7 @@ onMounted(async () => {
     const google = await loadGoogleIdentity()
     // One button per page, so the global callback is always this one's.
     google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: PUBLIC_GOOGLE_CLIENT_ID,
       callback: ({ credential }) => emit('credential', credential),
     })
     if (container.value) {
