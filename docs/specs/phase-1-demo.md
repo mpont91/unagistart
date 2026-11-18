@@ -1,6 +1,6 @@
 # Phase 1 — Demo in production
 
-> Status: 🔵 In development.
+> Status: 🟢 Done.
 
 **Goal:** Unagi Start runs in production at `unagistart.mpont91.com` as its own
 demo. A guest sees what the template is, what it includes and where its code is,
@@ -53,15 +53,15 @@ The demo stores real people's emails, so its policies have to be real.
 These need the owner's accounts; the README's "Services" and "Deploy" list the
 steps.
 
-- [ ] `unagistart.mpont91.com` serves the web from Vercel, and
+- [x] `unagistart.mpont91.com` serves the web from Vercel, and
       `api.unagistart.mpont91.com` the API from the VPS, behind the reverse
       proxy with TLS, each with its DNS record.
-- [ ] Emails go out from `noreply@unagistart.mpont91.com`, its domain verified
+- [x] Emails go out from `noreply@unagistart.mpont91.com`, its domain verified
       in Resend, and arrive in both languages.
-- [ ] Google sign-in works with the production OAuth client.
-- [ ] Errors in the API and the web reach their Sentry projects.
-- [ ] The nightly backup reaches B2, and one restore drill has been done.
-- [ ] UptimeRobot watches the web and the API's `/uptime`.
+- [x] Google sign-in works with the production OAuth client.
+- [x] Errors in the API and the web reach their Sentry projects.
+- [x] The nightly backup reaches B2, and one restore drill has been done.
+- [x] UptimeRobot watches the web and the API's `/uptime`.
 - [x] The reverse proxy in use, and how it's configured, is recorded in the
       README's "Deploy", replacing the note that it's still to be recorded.
 - [x] The README lists the services the demo uses, each with its console, what
@@ -79,7 +79,7 @@ fixed, so this spec stays the full record of what the phase did.
 - [x] The footer's links wrap on a phone. With four links they fit, but they
       stayed on one line, so a project that added more (Unagi Poker has seven)
       pushed the page wider than the screen.
-- [ ] A missing or malformed environment variable stops the build or the boot
+- [x] A missing or malformed environment variable stops the build or the boot
       with a message that names it. Vercel's first build without
       `PUBLIC_API_URL` failed with "Cannot read properties of undefined (reading
       'replace')"; the web now declares its variables with `astro:env`, and the

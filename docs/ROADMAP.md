@@ -5,9 +5,9 @@
 
 ## Phases
 
-| #   | Phase              | Status            | Spec                                     |
-| --- | ------------------ | ----------------- | ---------------------------------------- |
-| 1   | Demo in production | 🔵 In development | [phase-1-demo.md](specs/phase-1-demo.md) |
+| #   | Phase              | Status  | Spec                                     |
+| --- | ------------------ | ------- | ---------------------------------------- |
+| 1   | Demo in production | 🟢 Done | [phase-1-demo.md](specs/phase-1-demo.md) |
 
 Status values: ⚪ Not started · 🟡 Spec in progress · 🔵 In development · 🟢
 Done
