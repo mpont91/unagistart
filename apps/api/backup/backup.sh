@@ -14,6 +14,15 @@ b2() {
   echo "$out"
 }
 
+# The keys a step needs, each named when it's empty: Compose passes a key left
+# blank in .env as an empty string, which `set -u` lets through.
+need() {
+  for name in "$@"; do
+    eval "value=\${$name:-}"
+    [ -n "$value" ] || { echo "backup: $name is empty in .env" >&2; exit 1; }
+  done
+}
+
 # A Backblaze B2 key restricted to the backup bucket. Only its bucket comes
 # back from the authorisation, so the bucket is never configured separately.
 # Sets $api, $download, $bucket, $bucket_name and $token.
@@ -48,6 +57,7 @@ upload() {
 # Encrypted to the owner's public key: the server can download a backup but
 # never decrypt one, so neither a stolen server nor the provider can open them.
 once() {
+  need BACKUP_AGE_RECIPIENT BACKUP_B2_KEY_ID BACKUP_B2_APPLICATION_KEY
   file=/tmp/$(date -u +%Y-%m-%dT%H%MZ).dump.age
   trap 'rm -f "$file"' EXIT
   pg_dump --format=custom | age -r "$BACKUP_AGE_RECIPIENT" > "$file"
@@ -103,6 +113,7 @@ nightly() {
 # never stored, and goes to age through a pipe, so it's never on disk, not even
 # on the server's.
 restore() {
+  need BACKUP_B2_KEY_ID BACKUP_B2_APPLICATION_KEY
   authorize "$BACKUP_B2_KEY_ID" "$BACKUP_B2_APPLICATION_KEY"
   # Names are timestamps, so the latest sorts last.
   list="$api/b2api/v4/b2_list_file_names?bucketId=$bucket&prefix=daily/"
