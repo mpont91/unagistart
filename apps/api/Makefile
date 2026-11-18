@@ -71,9 +71,8 @@ deploy:
 		docker compose run --rm --build migrate && \
 		make build"
 
-# Opens in the repo, or in the home directory before it's cloned there.
 ssh:
-	ssh $(SERVER_SSH) -t "cd $(SERVER_PATH) 2>/dev/null; bash"
+	ssh $(SERVER_SSH) -t "cd $(SERVER_PATH) && bash"
 
 # The only way to change a role: the app never sets one, so nobody can promote
 # themselves. Runs against whichever machine's database you're on (locally, or

@@ -90,8 +90,8 @@ The API doesn't boot without three values in `apps/api/.env`:
 
 - `JWT_SECRET`: a random string, `openssl rand -hex 32`.
 - `RESEND_API_KEY`: from Resend (see "Services").
-- `GOOGLE_CLIENT_ID`: from Google Cloud (see "Services"), also in
-  `apps/web/src/constants.ts`.
+- `GOOGLE_CLIENT_ID`: from Google Cloud (see "Services"), also as
+  `PUBLIC_GOOGLE_CLIENT_ID` in `apps/web/.env`.
 
 Any value works for the last two until the real ones exist; the confirmation
 email isn't sent then, so to log in with an account made by email, mark it
@@ -107,33 +107,82 @@ project already uses a port, change it in that app's `.env`.
 
 ## Services
 
-The providers the owner's projects use, each free at a small product's scale.
-Any other works: email, Google sign-in and error reporting sit behind a port in
-the API. Each name links to its console.
+The providers the owner's projects use, each free at a small product's scale,
+set up once per project, in their consoles. Any other works: email, Google
+sign-in and error reporting sit behind a port in the API. Written with this
+project's values, like "Deploy"; the VPS, the web's Vercel project and
+UptimeRobot are set up there, since they need the rest running.
 
-- [ ] **Domain** on [DonDominio](https://www.dondominio.com/), its nameservers
-      pointed at [Vercel](https://vercel.com/dashboard/domains), which holds the
-      DNS.
-- [ ] **VPS** on [Clouding.io](https://portal.clouding.io/), set up in "Deploy".
-- [ ] **[Vercel](https://vercel.com/dashboard):** hosts the web and the DNS.
-- [ ] **[Resend](https://resend.com/emails):** the domain verified, an API key →
-      `RESEND_API_KEY`.
-- [ ] **[Google Cloud](https://console.cloud.google.com/apis/credentials):** a
-      "Web application" OAuth client, with the production origin and
-      `http://localhost:4321` → `GOOGLE_CLIENT_ID`.
-- [ ] **[Sentry](https://sentry.io/)** (EU): a project for the API →
-      `SENTRY_DSN`, one for the web → `PUBLIC_SENTRY_DSN`.
-- [ ] **[Backblaze B2](https://secure.backblaze.com/b2_buckets.htm)** (EU): a
-      private bucket and a _Read and Write_ key restricted to it →
-      `BACKUP_B2_KEY_ID`, `BACKUP_B2_APPLICATION_KEY`. Lifecycle: `daily/`
-      hidden after 7 days, `weekly/` after 28, deleted a day later.
-- [ ] **Backup key:** `age-keygen`. The public key → `BACKUP_AGE_RECIPIENT`; the
-      private one only in [Bitwarden](https://vault.bitwarden.com/).
-- [ ] **[UptimeRobot](https://dashboard.uptimerobot.com/):** monitors on the web
-      and on the API's `/uptime`.
+### Domain: DonDominio and Vercel
 
-A project then replaces this list with a table of the ones it uses: each one's
-console, what it's for and where its key goes.
+The domain is bought at DonDominio and its DNS lives in Vercel, so every record
+is a `vercel dns add`. Once per domain; a project on a subdomain of one already
+set up skips it.
+
+1. In [Vercel's domains](https://vercel.com/dashboard/domains), add
+   `mpont91.com`. It lists its nameservers.
+2. In [DonDominio](https://www.dondominio.com/), the domain's DNS servers →
+   custom, with Vercel's.
+
+### Email: Resend
+
+1. In [Resend's domains](https://resend.com/domains), add
+   `unagistart.mpont91.com`, in the EU region: the API sends from
+   `noreply@unagistart.mpont91.com`.
+2. Add every record it lists in Vercel's DNS for `mpont91.com`, then **Verify
+   DNS records**.
+3. [API keys](https://resend.com/api-keys) → create one with _Sending access_,
+   restricted to that domain → `RESEND_API_KEY`.
+
+### Google sign-in: Google Cloud
+
+1. [Create a project](https://console.cloud.google.com/projectcreate),
+   `unagistart`.
+2. In [Google Auth Platform](https://console.cloud.google.com/auth/overview),
+   **Get started**: the app's name, a support email, audience _External_, a
+   contact email.
+3. **Audience** → **Publish app**, so anyone can sign in, not only test users.
+   It asks only for the email and the profile, so Google doesn't review it.
+4. **Clients** → **Create client**, _Web application_, with
+   `https://unagistart.mpont91.com` and `http://localhost:4321` as _Authorized
+   JavaScript origins_ and no redirect URI.
+5. Its client ID → `GOOGLE_CLIENT_ID` in the API's `.env`, and
+   `PUBLIC_GOOGLE_CLIENT_ID` in the web's (and in Vercel).
+
+### Errors: Sentry
+
+1. Sign up at [Sentry](https://sentry.io/) with the data stored in the EU (it's
+   chosen with the organisation, once).
+2. A project for the API (platform _Express_), `unagistart-api` → its DSN (under
+   _Client Keys_) → `SENTRY_DSN` in the API's `.env`.
+3. A project for the web (platform _Astro_), `unagistart-web` → its DSN →
+   `PUBLIC_SENTRY_DSN` in Vercel.
+
+### Backups: Backblaze B2 and age
+
+1. Sign up at [Backblaze](https://www.backblaze.com/sign-up/cloud-storage) with
+   the region _EU Central_ (it's chosen with the account, once).
+2. [Create a bucket](https://secure.backblaze.com/b2_buckets.htm),
+   `unagistart-backups`, private, with Object Lock off.
+3. Its **Lifecycle Settings** → custom rules: prefix `daily/`, hidden 7 days
+   after upload; prefix `weekly/`, hidden after 28; both deleted 1 day after
+   hidden.
+4. [Application keys](https://secure.backblaze.com/app_keys.htm) → a new one,
+   access to that bucket only, _Read and Write_ → its keyID →
+   `BACKUP_B2_KEY_ID`, its applicationKey (shown once) →
+   `BACKUP_B2_APPLICATION_KEY`, in the server's `.env` and yours (the restore
+   drill reads them).
+5. The key the backups are encrypted to, on your machine, through a throwaway
+   container so `age` needn't be installed:
+
+   ```bash
+   docker run --rm alpine sh -c 'apk add -q age && age-keygen'
+   ```
+
+   It prints the key pair and writes no file. Save all of it in
+   [Bitwarden](https://vault.bitwarden.com/): the `AGE-SECRET-KEY-1…` line is
+   what `make api/restore` asks for, and it's never on the server. The public
+   key (`age1…`) → `BACKUP_AGE_RECIPIENT`.
 
 ## Deploy
 
@@ -146,23 +195,11 @@ everything else reaches the server by its name.
 **The server** needs Docker (with Compose), git, `make` and Caddy, the reverse
 proxy, and nothing else: everything the project runs there runs in a container.
 
-1. **Create the VPS** on Clouding: Ubuntu, latest LTS, with your SSH public key.
-   In its firewall, open only ports 22, 80 and 443.
-2. **Point the API's name at it.** In Vercel's DNS for `mpont91.com`, an `A`
-   record `api.unagistart` → `<ip>`
-   (`vercel dns add mpont91.com api.unagistart A <ip>`). Wait until
-   `dig +short api.unagistart.mpont91.com` prints `<ip>`: Caddy can't get a
-   certificate before.
-3. **Tell your machine where it is.** In your local `apps/api/.env`:
-
-   ```bash
-   SERVER_SSH=root@api.unagistart.mpont91.com
-   SERVER_PATH=/root/unagistart
-   ```
-
-   From then on, `make api/ssh` opens a shell on the server.
-
-4. **Install what it needs**, on the server (`make api/ssh`):
+1. **Create the VPS** on Clouding: Ubuntu, latest LTS.
+2. **Point the API's name at it:**
+   `vercel dns add mpont91.com api.unagistart A <ip>`.
+3. **Install what it needs**, on the server
+   (`ssh root@api.unagistart.mpont91.com`):
 
    ```bash
    apt update && apt upgrade -y
@@ -170,29 +207,31 @@ proxy, and nothing else: everything the project runs there runs in a container.
    curl -fsSL https://get.docker.com | sh
    ```
 
-   The API and the database publish their ports on `127.0.0.1` only, so the
-   firewall's three ports are all the outside reaches.
-
-5. **Give it a deploy key.** Each server reads the repository with a key of its
-   own, read-only, so a lost server is one key to revoke:
+4. **Give it a deploy key.** Each project on each server reads its repository
+   with a key of its own, read-only, named after the repository: GitHub takes a
+   key for one repository only, and a server may host several projects.
 
    ```bash
-   ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
-   cat ~/.ssh/id_ed25519.pub
+   ssh-keygen -t ed25519 -N '' -f ~/.ssh/unagistart
+   cat ~/.ssh/unagistart.pub
    ```
 
    Add what it prints in
    [the repository's deploy keys](https://github.com/mpont91/unagistart/settings/keys),
    without write access.
 
-6. **Clone the repository**, in root's home (the first time, `yes` to GitHub's
-   fingerprint):
+5. **Clone the repository** with that key, in root's home (the first time, `yes`
+   to GitHub's fingerprint):
 
    ```bash
-   git clone git@github.com:mpont91/unagistart.git
+   git clone git@github.com:mpont91/unagistart.git \
+     -c core.sshCommand='ssh -i ~/.ssh/unagistart -o IdentitiesOnly=yes'
    ```
 
-7. **Write `apps/api/.env`** from the example:
+   `-c` saves the key in the clone's own config, so every later `git pull` uses
+   it, and the other projects' keys never get in the way.
+
+6. **Write `apps/api/.env`** from the example:
 
    ```bash
    cd unagistart/apps/api
@@ -206,8 +245,13 @@ proxy, and nothing else: everything the project runs there runs in a container.
      `DATABASE_URL`.
    - `JWT_SECRET`: a new one (`openssl rand -hex 32`), never the development
      one.
-   - `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `SENTRY_DSN`: the real ones.
-   - `COMPOSE_PROFILES=backup` and the three `BACKUP_*` keys.
+   - `RESEND_API_KEY`: from [Resend](#email-resend).
+   - `GOOGLE_CLIENT_ID`: from [Google Cloud](#google-sign-in-google-cloud).
+   - `SENTRY_DSN`: the API project's, from [Sentry](#errors-sentry).
+   - `COMPOSE_PROFILES=backup`, which turns the nightly backup on: it runs only
+     on the server, so in development it stays empty.
+   - `BACKUP_B2_KEY_ID`, `BACKUP_B2_APPLICATION_KEY` and `BACKUP_AGE_RECIPIENT`:
+     from [Backblaze B2 and age](#backups-backblaze-b2-and-age).
    - `PORT` and `POSTGRES_PORT`: the defaults, unless another project on the
      same VPS already uses them.
    - `SERVER_SSH` and `SERVER_PATH`: empty; they're for your machine.
@@ -215,11 +259,11 @@ proxy, and nothing else: everything the project runs there runs in a container.
    `COMPOSE_PROJECT_NAME` stays `unagistart`, and never changes afterwards: it
    names the database volume.
 
-8. **Put Caddy in front of the API.** It gets and renews the certificate by
+7. **Put Caddy in front of the API.** It gets and renews the certificate by
    itself:
 
    ```bash
-   cat > /etc/caddy/Caddyfile <<'CADDY'
+   cat >> /etc/caddy/Caddyfile <<'CADDY'
    api.unagistart.mpont91.com {
    	reverse_proxy 127.0.0.1:3000
    }
@@ -227,11 +271,17 @@ proxy, and nothing else: everything the project runs there runs in a container.
    systemctl reload caddy
    ```
 
-   The port is the `PORT` in `.env`. A VPS shared by several projects keeps one
-   Caddyfile with a block per project. Nothing else may sit in front: the API
-   trusts exactly one proxy hop, and its rate limits rely on it.
-
 **The first deploy**, from your machine:
+
+8. **Tell your machine where it is.** In your local `apps/api/.env`:
+
+   ```bash
+   SERVER_SSH=root@api.unagistart.mpont91.com
+   SERVER_PATH=/root/unagistart
+   ```
+
+   From then on, `make api/ssh` opens a shell in the server's clone, and
+   `make deploy` deploys there.
 
 9. Deploy, and check the API answers:
 
@@ -249,8 +299,9 @@ proxy, and nothing else: everything the project runs there runs in a container.
 **The web:**
 
 11. In Vercel, **import the repository** with `apps/web` as root directory, set
-    `PUBLIC_API_URL=https://api.unagistart.mpont91.com` and `PUBLIC_SENTRY_DSN`,
-    deploy, and add `unagistart.mpont91.com` under the project's _Domains_.
+    `PUBLIC_API_URL=https://api.unagistart.mpont91.com`, `PUBLIC_SENTRY_DSN` and
+    `PUBLIC_GOOGLE_CLIENT_ID`, deploy, and add `unagistart.mpont91.com` under
+    the project's _Domains_.
 
 **Check it end to end:**
 

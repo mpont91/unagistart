@@ -64,7 +64,7 @@ steps.
 - [ ] UptimeRobot watches the web and the API's `/uptime`.
 - [x] The reverse proxy in use, and how it's configured, is recorded in the
       README's "Deploy", replacing the note that it's still to be recorded.
-- [ ] The README lists the services the demo uses, each with its console, what
+- [x] The README lists the services the demo uses, each with its console, what
       it's for and where its key goes.
 
 ## 1.x Found in use
