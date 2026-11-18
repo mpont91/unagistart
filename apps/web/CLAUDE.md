@@ -49,10 +49,10 @@ If you change `WEB_PORT`, change them too.
 ## Environment
 
 `.env` is gitignored; `.env.example` lists the keys with their defaults:
-`PUBLIC_API_URL`, `PUBLIC_SENTRY_DSN` (optional; without it nothing is reported)
-and `WEB_PORT`. `PUBLIC_API_URL` is `PUBLIC_`-prefixed, so **it is inlined into
-the client bundle** — never put a secret in this app's env, and never commit
-`.env`.
+`PUBLIC_API_URL`, `PUBLIC_GOOGLE_CLIENT_ID`, `PUBLIC_SENTRY_DSN` (optional;
+without it nothing is reported) and `WEB_PORT`. `PUBLIC_API_URL` is
+`PUBLIC_`-prefixed, so **it is inlined into the client bundle** — never put a
+secret in this app's env, and never commit `.env`.
 
 **Every variable the app reads is declared in `env.schema`** in
 `astro.config.mjs` and imported from `astro:env/client`, never read from
