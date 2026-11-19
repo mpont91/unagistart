@@ -284,6 +284,7 @@ Everything goes through this app's `Makefile`; from the repo root, prefix with
 | `make down` / `make logs`           | Stop the containers / follow their logs (dev or production)                   |
 | `make build`                        | Build and (re)start the production stack                                      |
 | `make deploy` / `make ssh`          | Deploy to the VPS / open a shell there                                        |
+| `make pull-db`                      | Production's database in place of the local one (see "Copying production")    |
 | `make backup`                       | Take one off-site backup now, as the server does every night                  |
 | `make restore [FILE=…]`             | Restore a backup into `<POSTGRES_DB>_restore` (see "Backups")                 |
 
@@ -377,6 +378,20 @@ Prisma 7 with the `@prisma/adapter-pg` driver adapter; config in
 - Nothing in this repo runs migrations against production automatically except
   the `deploy` target.
 
+### Copying production
+
+`make api/pull-db` replaces the local database with production's, to work on
+real data. It streams `pg_dump` over SSH into `<POSTGRES_DB>_pull` and only then
+swaps it in, so the dump never touches the disk and a failed copy leaves the
+local database as it was; it refuses to run where `NODE_ENV=production`. The
+test and end-to-end databases are left alone. Afterwards, sign in with a
+production account; sessions don't carry over (`JWT_SECRET` differs).
+
+The copy holds real users' data, so it stays on the owner's machine. The local
+API then runs on it as production does: whatever it sends outside reaches real
+people, emails above all, with links to the local web. A project whose API
+reaches more (an exchange, an AI provider) says so here.
+
 ## Environment
 
 `.env` is gitignored; `.env.example` lists the keys. Required: `DATABASE_URL`,
@@ -387,11 +402,11 @@ OAuth client of the web's Google button, the same value as
 emails point (the web's origin; not the same thing as `CORS_ORIGINS`, which may
 list several). There is no sender variable: emails always go out from
 `APP_NAME <noreply@APP_DOMAIN>`, the domain verified in Resend. `SENTRY_DSN` is
-optional: without it nothing is reported. Deployment also uses `SERVER_SSH` (the
-SSH destination, `user@host`) and `SERVER_PATH` (the repo on the server).
-Backups use `COMPOSE_PROFILES` and `BACKUP_AGE_RECIPIENT`, set only on the
-server, and `BACKUP_B2_KEY_ID` and `BACKUP_B2_APPLICATION_KEY`, set on the
-server and on the owner's machine, to restore (see "Backups").
+optional: without it nothing is reported. Deployment and `make pull-db` also use
+`SERVER_SSH` (the SSH destination, `user@host`) and `SERVER_PATH` (the repo on
+the server). Backups use `COMPOSE_PROFILES` and `BACKUP_AGE_RECIPIENT`, set only
+on the server, and `BACKUP_B2_KEY_ID` and `BACKUP_B2_APPLICATION_KEY`, set on
+the server and on the owner's machine, to restore (see "Backups").
 
 Read env vars only in `src/settings.ts` (`prisma.config.ts`, for the Prisma CLI,
 reads `DATABASE_URL` too).

@@ -9,7 +9,7 @@ E2E_DATABASE_URL = postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:
 PSQL = docker compose exec -T db psql -U $(POSTGRES_USER) -v ON_ERROR_STOP=1
 
 .PHONY: dev check test e2e-server database build down logs deploy ssh grant-admin revoke-admin \
-	backup restore
+	backup restore pull-db
 
 dev:
 	docker compose up -d --wait db
@@ -73,6 +73,24 @@ deploy:
 
 ssh:
 	ssh $(SERVER_SSH) -t "cd $(SERVER_PATH) && bash"
+
+# Production's database in place of the local one, straight from the server:
+# restored into <POSTGRES_DB>_pull, then swapped in, so a failed copy leaves
+# the local one as it was. Never written to disk; never run on the server.
+pull-db:
+ifeq ($(NODE_ENV),production)
+	$(error pull-db replaces the local database: run it on your machine)
+endif
+	docker compose up -d --wait db
+	@$(PSQL) -d postgres -c 'DROP DATABASE IF EXISTS "$(POSTGRES_DB)_pull"' \
+		-c 'CREATE DATABASE "$(POSTGRES_DB)_pull"'
+	ssh $(SERVER_SSH) "cd $(SERVER_PATH)/apps/api && docker compose exec -T db \
+		sh -c 'pg_dump -U \"\$$POSTGRES_USER\" -Fc \"\$$POSTGRES_DB\"'" \
+		| docker compose exec -T db pg_restore -U $(POSTGRES_USER) \
+		--no-owner --no-acl --exit-on-error -d $(POSTGRES_DB)_pull
+	@$(PSQL) -d postgres \
+		-c 'DROP DATABASE IF EXISTS "$(POSTGRES_DB)" WITH (FORCE)' \
+		-c 'ALTER DATABASE "$(POSTGRES_DB)_pull" RENAME TO "$(POSTGRES_DB)"'
 
 # The only way to change a role: the app never sets one, so nobody can promote
 # themselves. Runs against whichever machine's database you're on (locally, or
